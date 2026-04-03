@@ -12,6 +12,14 @@
     in
     {
 
+      packages."x86_64-linux".default = pkgs.rustPlatform.buildRustPackage {
+        name = "lynter";
+        src = ./.;
+        buildInputs = [];
+        nativeBuildInputs = [];
+        cargoLock.lockFile = ./Cargo.lock;
+      };
+
       devShells."x86_64-linux".default = pkgs.mkShell {
         buildInputs = with pkgs; [
           cargo

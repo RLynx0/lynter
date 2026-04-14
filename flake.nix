@@ -1,36 +1,44 @@
 {
-  description = "A repl and interpreter for a lambda-calculus-esque language";
-
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    naersk.url = "github:nix-community/naersk";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    fenix.url = "github:nix-community/fenix";
   };
 
-  outputs =
-    { self, nixpkgs }:
-    let
-      pkgs = nixpkgs.legacyPackages."x86_64-linux";
-    in
-    {
+  outputs = {
+    self,
+    flake-utils,
+    naersk,
+    nixpkgs,
+    fenix,
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
+        pkgs = (import nixpkgs) {
+          inherit system;
+          overlays = [fenix.overlays.default];
+        };
 
-      packages."x86_64-linux".default = pkgs.rustPlatform.buildRustPackage {
-        name = "lynter";
-        src = ./.;
-        buildInputs = [];
-        nativeBuildInputs = [];
-        cargoLock.lockFile = ./Cargo.lock;
-      };
+        naersk' = pkgs.callPackage naersk {};
+      in rec {
+        defaultPackage = naersk'.buildPackage {
+          src = ./.;
+        };
 
-      devShells."x86_64-linux".default = pkgs.mkShell {
-        buildInputs = with pkgs; [
-          cargo
-          rustc
-
-          clippy
-          rust-analyzer
-          rustfmt
-        ];
-        env.RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
-      };
-
-    };
+        devShell = pkgs.mkShell {
+          nativeBuildInputs = with pkgs; [
+            alejandra
+            rust-analyzer
+            (pkgs.fenix.stable.withComponents [
+              "cargo"
+              "clippy"
+              "rust-src"
+              "rustc"
+              "rustfmt"
+            ])
+          ];
+        };
+      }
+    );
 }
